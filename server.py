@@ -86,22 +86,19 @@ def get_audio_features(token, track_ids):
     return features
 
 
-def ask_claude(songs_with_features):
+def ask_claude(songs):
     """Send songs to Claude and get playlist suggestions."""
     # Trim to 300 songs max to keep prompt size reasonable
-    sample = songs_with_features[:300]
+    sample = songs[:300]
 
     songs_text = "\n".join(
-        f'- "{s["name"]}" by {s["artist"]} | '
-        f'energy={s.get("energy","?")} valence={s.get("valence","?")} '
-        f'tempo={s.get("tempo","?")}bpm dance={s.get("danceability","?")} '
-        f'acoustic={s.get("acousticness","?")}'
+        f'- "{s["name"]}" by {s["artist"]} (added: {s.get("added_at","")[:7]})'
         for s in sample
     )
 
-    prompt = f"""You are a music curator AI. A user has {len(songs_with_features)} liked songs on Spotify that are cluttering their library. Your job is to group them into 5-12 meaningful playlists they would actually listen to — like a real human music fan would curate them.
+    prompt = f"""You are a music curator AI. A user has {len(songs)} liked songs on Spotify that are cluttering their library. Your job is to group them into 5-12 meaningful playlists they would actually listen to — like a real human music fan would curate them.
 
-Here are their songs (up to 300 shown) with Spotify audio features:
+Here are their songs (up to 300 shown):
 {songs_text}
 
 Rules:
@@ -270,21 +267,11 @@ class Handler(BaseHTTPRequestHandler):
                 songs = get_liked_songs(token)
                 print(f"   Got {len(songs)} songs")
 
-                print("🎵 Fetching audio features...")
-                ids = [s["id"] for s in songs]
-                features = get_audio_features(token, ids)
-
-                # Merge features into songs
-                songs_with_features = []
-                for s in songs:
-                    f = features.get(s["id"], {})
-                    songs_with_features.append({**s, **f})
-
                 print("🤖 Asking Claude to suggest playlists...")
-                suggestions = ask_claude(songs_with_features)
+                suggestions = ask_claude(songs)
 
                 # Build id → song map for response
-                song_map = {s["id"]: s for s in songs_with_features}
+                song_map = {s["id"]: s for s in songs}
 
                 # Enrich suggestions with song details
                 enriched = []
