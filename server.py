@@ -92,28 +92,28 @@ def get_audio_features(token, track_ids):
 
 def ask_claude(songs):
     """Send songs to Claude and get playlist suggestions."""
-    # Trim to 300 songs max to keep prompt size reasonable
-    sample = songs[:300]
+    # Trim to 200 songs max to keep prompt size reasonable
+    sample = songs[:200]
 
     songs_text = "\n".join(
-        f'- "{s["name"]}" by {s["artist"]} (added: {s.get("added_at","")[:7]})'
+        f'[{s["id"]}] "{s["name"]}" by {s["artist"]}'
         for s in sample
     )
 
-    prompt = f"""You are a music curator AI. A user has {len(songs)} liked songs on Spotify that are cluttering their library. Your job is to group them into 5-12 meaningful playlists they would actually listen to — like a real human music fan would curate them.
+    prompt = f"""You are a music curator AI. A user has {len(songs)} liked songs on Spotify that are cluttering their library. Your job is to group them into 5-12 meaningful playlists they would actually listen to.
 
-Here are their songs (up to 300 shown):
+Here are their songs with their Spotify track IDs:
 {songs_text}
 
 Rules:
 - Create 5 to 12 playlists maximum
 - Each playlist should have a compelling, evocative name (not generic like "Playlist 1")
 - Each playlist needs a short description (1-2 sentences) explaining the vibe
-- Assign each song ID to exactly ONE playlist
+- Assign each song (by its exact ID in brackets) to exactly ONE playlist
 - Think about actual listening contexts: working out, late night, focus/study, road trip, cooking, etc.
 - Songs not fitting any clear group can go in a "Miscellaneous" or "Discoveries" playlist
 
-Respond ONLY with valid JSON in this exact format:
+Respond ONLY with valid JSON in this exact format, using the exact track IDs from above:
 {{
   "playlists": [
     {{
@@ -126,7 +126,7 @@ Respond ONLY with valid JSON in this exact format:
 
     req_body = json.dumps({
         "model": "claude-sonnet-4-6",
-        "max_tokens": 4096,
+        "max_tokens": 8000,
         "messages": [{"role": "user", "content": prompt}]
     }).encode()
 
