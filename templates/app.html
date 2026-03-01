@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sortify — Your Playlists</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black:  #0a0a0a;
+    --white:  #f5f0e8;
+    --green:  #1DB954;
+    --green2: #17a349;
+    --muted:  #666;
+    --card:   #111;
+    --card2:  #161616;
+    --border: #1e1e1e;
+    --red:    #e74c3c;
+  }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+  }
+
+  /* ── nav ── */
+  nav {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,10,.9);
+    backdrop-filter: blur(12px);
+    position: sticky; top: 0; z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 1.2rem;
+  }
+  .logo span { color: var(--green); }
+
+  .nav-right { display: flex; align-items: center; gap: 1rem; }
+
+  #user-chip {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .75rem; color: var(--muted);
+  }
+  #user-chip img {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700; font-size: .85rem;
+    padding: .55rem 1.2rem;
+    border-radius: 100px;
+    border: none; cursor: pointer;
+    transition: all .2s;
+    text-decoration: none;
+  }
+  .btn-green  { background: var(--green); color: #000; }
+  .btn-green:hover { background: var(--green2); }
+  .btn-ghost  { background: transparent; color: var(--white); border: 1px solid var(--border); }
+  .btn-ghost:hover { border-color: var(--green); }
+  .btn-sm     { padding: .35rem .8rem; font-size: .75rem; }
+  .btn-red    { background: var(--red); color: #fff; }
+  .btn-red:hover { opacity: .85; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* ── layout ── */
+  .container { max-width: 1100px; margin: 0 auto; padding: 2rem; }
+
+  /* ── steps header ── */
+  .steps-bar {
+    display: flex; gap: 0; margin-bottom: 2.5rem;
+    border: 1px solid var(--border); border-radius: 12px; overflow: hidden;
+  }
+  .step-item {
+    flex: 1; padding: .8rem 1rem; text-align: center;
+    font-size: .7rem; letter-spacing: .08em; text-transform: uppercase;
+    color: var(--muted); background: var(--card);
+    border-right: 1px solid var(--border);
+    transition: all .3s;
+  }
+  .step-item:last-child { border-right: none; }
+  .step-item.active { color: var(--green); background: rgba(29,185,84,.07); }
+  .step-item.done   { color: var(--muted); }
+
+  /* ── panels ── */
+  .panel { display: none; }
+  .panel.active { display: block; animation: fadeIn .3s ease; }
+
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ── fetch panel ── */
+  .big-center {
+    text-align: center; padding: 5rem 2rem;
+  }
+  .big-center h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.5rem; font-weight: 800;
+    margin-bottom: 1rem;
+  }
+  .big-center p {
+    color: var(--muted); font-size: .9rem;
+    max-width: 420px; margin: 0 auto 2.5rem; line-height: 1.7;
+  }
+
+  .progress-wrap {
+    margin: 2rem auto; max-width: 400px;
+    display: none;
+  }
+  .progress-wrap.show { display: block; }
+  .progress-label { font-size: .75rem; color: var(--muted); margin-bottom: .5rem; }
+  .progress-bar {
+    height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: var(--green);
+    width: 0%; transition: width .4s ease;
+    border-radius: 2px;
+  }
+
+  /* ── ai thinking ── */
+  .thinking {
+    text-align: center; padding: 4rem 2rem;
+  }
+  .spinner {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 1.5rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── review panel ── */
+  .review-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;
+  }
+  .review-header h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.6rem; font-weight: 800;
+  }
+  .review-header p { color: var(--muted); font-size: .8rem; margin-top: .3rem; }
+
+  .playlist-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+
+  .pl-card {
+    background: var(--card);
+    padding: 1.5rem;
+    transition: background .2s;
+    position: relative;
+  }
+  .pl-card.removed { opacity: .35; }
+
+  .pl-card-header {
+    display: flex; align-items: flex-start; gap: .8rem; margin-bottom: 1rem;
+  }
+  .pl-emoji { font-size: 1.8rem; line-height: 1; flex-shrink: 0; }
+  .pl-meta { flex: 1; min-width: 0; }
+
+  .pl-name-input {
+    background: transparent;
+    border: none; border-bottom: 1px solid transparent;
+    color: var(--white);
+    font-family: 'Syne', sans-serif;
+    font-size: 1rem; font-weight: 700;
+    width: 100%;
+    padding: .1rem 0;
+    transition: border-color .2s;
+    outline: none;
+  }
+  .pl-name-input:focus { border-bottom-color: var(--green); }
+
+  .pl-desc {
+    font-size: .72rem; color: var(--muted);
+    margin-top: .2rem; line-height: 1.5;
+  }
+
+  .pl-count {
+    font-size: .7rem; color: var(--green);
+    letter-spacing: .05em;
+  }
+
+  .pl-actions {
+    display: flex; gap: .5rem; margin-top: 1rem;
+  }
+
+  .track-list {
+    display: none;
+    margin-top: 1rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+    max-height: 260px;
+    overflow-y: auto;
+  }
+  .track-list.open { display: block; }
+  .track-list::-webkit-scrollbar { width: 4px; }
+  .track-list::-webkit-scrollbar-track { background: transparent; }
+  .track-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .track-row {
+    display: flex; align-items: center; gap: .7rem;
+    padding: .4rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: .72rem;
+  }
+  .track-row:last-child { border-bottom: none; }
+  .track-thumb {
+    width: 32px; height: 32px;
+    border-radius: 4px; object-fit: cover; flex-shrink: 0;
+    background: var(--border);
+  }
+  .track-name { color: var(--white); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .track-artist { color: var(--muted); white-space: nowrap; }
+
+  /* ── done panel ── */
+  .done-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 1rem;
+    margin-top: 2rem;
+  }
+  .done-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+  }
+  .done-card h3 { font-family: 'Syne', sans-serif; font-size: .95rem; font-weight: 700; margin-bottom: .3rem; }
+  .done-card p  { font-size: .72rem; color: var(--muted); }
+
+  /* ── toast ── */
+  .toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%);
+    background: var(--green); color: #000;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: .85rem;
+    padding: .7rem 1.5rem; border-radius: 100px;
+    opacity: 0; transition: opacity .3s; pointer-events: none; z-index: 999;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; }
+
+  a { color: inherit; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Sort<span>ify</span></div>
+  <div class="nav-right">
+    <div id="user-chip"><span id="user-name">Loading...</span></div>
+    <a href="/logout" class="btn btn-ghost btn-sm">Log out</a>
+  </div>
+</nav>
+
+<div class="container">
+
+  <!-- steps bar -->
+  <div class="steps-bar">
+    <div class="step-item active" id="step-1">① Fetch songs</div>
+    <div class="step-item" id="step-2">② AI sorts</div>
+    <div class="step-item" id="step-3">③ Review</div>
+    <div class="step-item" id="step-4">④ Done!</div>
+  </div>
+
+  <!-- ── Panel 1: Fetch ── -->
+  <div class="panel active" id="panel-fetch">
+    <div class="big-center">
+      <h2>Ready to sort your library?</h2>
+      <p>We'll fetch all your liked songs and their audio data, then Claude AI will suggest smart playlists for you to review.</p>
+      <button class="btn btn-green" id="btn-fetch" onclick="startFetch()">
+        ▶ Start — fetch my liked songs
+      </button>
+      <div class="progress-wrap" id="progress-wrap">
+        <div class="progress-label" id="progress-label">Fetching your liked songs...</div>
+        <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Panel 2: AI Thinking ── -->
+  <div class="panel" id="panel-thinking">
+    <div class="thinking">
+      <div class="spinner"></div>
+      <h3 style="font-family:'Syne',sans-serif;font-size:1.3rem;margin-bottom:.5rem;">Claude is sorting your music...</h3>
+      <p style="color:var(--muted);font-size:.85rem;">Analyzing mood, energy, tempo, and vibe.<br>This takes about 15–30 seconds.</p>
+    </div>
+  </div>
+
+  <!-- ── Panel 3: Review ── -->
+  <div class="panel" id="panel-review">
+    <div class="review-header">
+      <div>
+        <h2>Review your playlists</h2>
+        <p>Rename them, see the tracks inside, or remove ones you don't want.</p>
+      </div>
+      <button class="btn btn-green" id="btn-create" onclick="createPlaylists()">
+        ✦ Create playlists in Spotify
+      </button>
+    </div>
+    <div class="playlist-grid" id="playlist-grid"></div>
+  </div>
+
+  <!-- ── Panel 4: Done ── -->
+  <div class="panel" id="panel-done">
+    <div class="big-center">
+      <div style="font-size:4rem;margin-bottom:1rem;">🎉</div>
+      <h2>All done!</h2>
+      <p>Your new playlists are live in Spotify. Open the app and start listening.</p>
+      <a href="https://open.spotify.com" target="_blank" class="btn btn-green" style="margin:0 auto .8rem;display:inline-flex;">Open Spotify</a><br>
+      <button class="btn btn-ghost" style="margin-top:.5rem" onclick="location.reload()">Start over</button>
+    </div>
+    <div class="done-grid" id="done-grid"></div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let playlists = []; // mutable review state
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step-' + i);
+    el.classList.toggle('active', i === n);
+    el.classList.toggle('done', i < n);
+  }
+}
+
+function toast(msg, dur = 2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
+}
+
+function setProgress(pct, label) {
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = label;
+}
+
+// ── init ─────────────────────────────────────────────────────────────────────
+async function init() {
+  try {
+    const r = await fetch('/api/me');
+    const me = await r.json();
+    const chip = document.getElementById('user-chip');
+    chip.innerHTML = me.image
+      ? `<img src="${me.image}" alt=""> <span>${me.name}</span>`
+      : `<span>${me.name}</span>`;
+  } catch(e) {}
+}
+init();
+
+// ── step 1: fetch songs ───────────────────────────────────────────────────────
+async function startFetch() {
+  const btn = document.getElementById('btn-fetch');
+  btn.disabled = true;
+  btn.textContent = 'Fetching...';
+  document.getElementById('progress-wrap').classList.add('show');
+  setProgress(10, 'Connecting to Spotify...');
+
+  try {
+    setProgress(30, 'Fetching your liked songs...');
+    const r = await fetch('/api/liked-songs');
+    if (!r.ok) throw new Error('Failed to fetch liked songs');
+    const data = await r.json();
+    setProgress(100, `Got ${data.count} songs! Sending to AI...`);
+    await new Promise(res => setTimeout(res, 600));
+
+    // Move to thinking panel
+    showPanel('thinking');
+    setStep(2);
+    await runAI();
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '▶ Start — fetch my liked songs';
+    toast('Error: ' + e.message);
+  }
+}
+
+// ── step 2: AI ────────────────────────────────────────────────────────────────
+async function runAI() {
+  const r = await fetch('/api/suggest-playlists', { method: 'POST' });
+  if (!r.ok) throw new Error('AI suggestion failed');
+  const data = await r.json();
+  playlists = data.playlists.map((pl, i) => ({ ...pl, id: 'pl-' + i, removed: false }));
+  renderReview();
+  showPanel('review');
+  setStep(3);
+}
+
+// ── step 3: review ────────────────────────────────────────────────────────────
+function renderReview() {
+  const grid = document.getElementById('playlist-grid');
+  grid.innerHTML = '';
+  playlists.forEach((pl, idx) => {
+    const card = document.createElement('div');
+    card.className = 'pl-card' + (pl.removed ? ' removed' : '');
+    card.id = 'plcard-' + idx;
+    card.innerHTML = `
+      <div class="pl-card-header">
+        <div class="pl-emoji">${pl.emoji || '🎵'}</div>
+        <div class="pl-meta">
+          <input class="pl-name-input" value="${escHtml(pl.name)}" 
+            onchange="playlists[${idx}].name = this.value" />
+          <div class="pl-desc">${escHtml(pl.description || '')}</div>
+        </div>
+      </div>
+      <div class="pl-count">${pl.count} tracks</div>
+      <div class="pl-actions">
+        <button class="btn btn-ghost btn-sm" onclick="toggleTracks(${idx})">👁 See tracks</button>
+        ${pl.removed
+          ? `<button class="btn btn-green btn-sm" onclick="toggleRemove(${idx})">↩ Restore</button>`
+          : `<button class="btn btn-red btn-sm" onclick="toggleRemove(${idx})">✕ Remove</button>`}
+      </div>
+      <div class="track-list" id="tracklist-${idx}">
+        ${(pl.tracks || []).slice(0, 80).map(t => `
+          <div class="track-row">
+            ${t.image ? `<img class="track-thumb" src="${t.image}" loading="lazy">` : '<div class="track-thumb"></div>'}
+            <span class="track-name">${escHtml(t.name)}</span>
+            <span class="track-artist">${escHtml((t.artists || []).join(', '))}</span>
+          </div>`).join('')}
+        ${pl.tracks && pl.tracks.length > 80 ? `<div style="font-size:.7rem;color:var(--muted);padding:.5rem 0;">...and ${pl.tracks.length - 80} more</div>` : ''}
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+function toggleTracks(idx) {
+  const tl = document.getElementById('tracklist-' + idx);
+  tl.classList.toggle('open');
+}
+
+function toggleRemove(idx) {
+  playlists[idx].removed = !playlists[idx].removed;
+  renderReview();
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── step 4: create ────────────────────────────────────────────────────────────
+async function createPlaylists() {
+  const btn = document.getElementById('btn-create');
+  btn.disabled = true;
+  btn.textContent = 'Creating...';
+
+  const toCreate = playlists
+    .filter(pl => !pl.removed)
+    .map(pl => ({ name: pl.name, description: pl.description, track_ids: pl.track_ids }));
+
+  try {
+    const r = await fetch('/api/create-playlists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ playlists: toCreate }),
+    });
+    if (!r.ok) throw new Error('Failed to create playlists');
+    const data = await r.json();
+
+    // Render done
+    const doneGrid = document.getElementById('done-grid');
+    doneGrid.innerHTML = data.created.map(pl => `
+      <div class="done-card">
+        <h3>${escHtml(pl.name)}</h3>
+        <p>${pl.count} tracks added</p>
+      </div>`).join('');
+
+    showPanel('done');
+    setStep(4);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = '✦ Create playlists in Spotify';
+    toast('Error: ' + e.message);
+  }
+}
+</script>
+</body>
+</html>

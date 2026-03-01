@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sortify — Your Liked Songs, Finally Organized</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --black:   #0a0a0a;
+    --white:   #f5f0e8;
+    --green:   #1DB954;
+    --green2:  #17a349;
+    --muted:   #888;
+    --card:    #111;
+    --border:  #222;
+  }
+
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── grid bg ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(29,185,84,.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(29,185,84,.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 1.2rem 2.5rem;
+    border-bottom: 1px solid var(--border);
+    background: rgba(10,10,10,.85);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.4rem;
+    letter-spacing: -0.03em;
+  }
+  .logo span { color: var(--green); }
+
+  .badge {
+    font-size: .65rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    padding: .2rem .6rem;
+    border-radius: 100px;
+  }
+
+  /* ── hero ── */
+  .hero {
+    position: relative;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 8rem 2rem 4rem;
+    z-index: 1;
+  }
+
+  .hero-eyebrow {
+    font-size: .7rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 1.5rem;
+    animation: fadeUp .6s ease both;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(3rem, 8vw, 7rem);
+    font-weight: 800;
+    line-height: .95;
+    letter-spacing: -.04em;
+    margin-bottom: 1.5rem;
+    animation: fadeUp .6s .1s ease both;
+  }
+
+  h1 em {
+    font-style: normal;
+    color: var(--green);
+    position: relative;
+  }
+
+  .subtitle {
+    max-width: 520px;
+    font-size: .95rem;
+    line-height: 1.7;
+    color: var(--muted);
+    margin-bottom: 3rem;
+    animation: fadeUp .6s .2s ease both;
+  }
+
+  .cta-wrap {
+    display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center;
+    animation: fadeUp .6s .3s ease both;
+  }
+
+  .btn-spotify {
+    display: inline-flex; align-items: center; gap: .7rem;
+    background: var(--green);
+    color: #000;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: .9rem 2rem;
+    border-radius: 100px;
+    text-decoration: none;
+    transition: background .2s, transform .15s;
+    border: none; cursor: pointer;
+  }
+  .btn-spotify:hover { background: var(--green2); transform: translateY(-2px); }
+
+  .btn-ghost {
+    display: inline-flex; align-items: center;
+    color: var(--white);
+    font-family: 'DM Mono', monospace;
+    font-size: .85rem;
+    padding: .9rem 2rem;
+    border-radius: 100px;
+    border: 1px solid var(--border);
+    text-decoration: none;
+    transition: border-color .2s;
+  }
+  .btn-ghost:hover { border-color: var(--green); }
+
+  /* ── floating song cards ── */
+  .float-cards {
+    position: absolute; inset: 0; pointer-events: none; overflow: hidden;
+    z-index: 0;
+  }
+  .float-card {
+    position: absolute;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: .7rem 1rem;
+    font-size: .7rem;
+    white-space: nowrap;
+    color: var(--muted);
+    animation: float linear infinite;
+    opacity: 0;
+  }
+  .float-card span { color: var(--white); font-weight: 400; }
+  .float-card:nth-child(1)  { left: 3%;  top: 15%; animation-duration: 18s; animation-delay: 0s; }
+  .float-card:nth-child(2)  { left: 78%; top: 22%; animation-duration: 22s; animation-delay: -4s; }
+  .float-card:nth-child(3)  { left: 88%; top: 60%; animation-duration: 20s; animation-delay: -8s; }
+  .float-card:nth-child(4)  { left: 2%;  top: 70%; animation-duration: 24s; animation-delay: -12s; }
+  .float-card:nth-child(5)  { left: 60%; top: 80%; animation-duration: 19s; animation-delay: -6s; }
+  .float-card:nth-child(6)  { left: 20%; top: 25%; animation-duration: 21s; animation-delay: -2s; }
+
+  @keyframes float {
+    0%   { transform: translateY(20px); opacity: 0; }
+    10%  { opacity: .6; }
+    90%  { opacity: .6; }
+    100% { transform: translateY(-20px); opacity: 0; }
+  }
+
+  /* ── how it works ── */
+  .section { position: relative; z-index: 1; padding: 6rem 2rem; }
+
+  .section-label {
+    text-align: center;
+    font-size: .65rem;
+    letter-spacing: .2em;
+    text-transform: uppercase;
+    color: var(--green);
+    margin-bottom: 3rem;
+  }
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5px;
+    max-width: 900px;
+    margin: 0 auto;
+    background: var(--border);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .step {
+    background: var(--black);
+    padding: 2.5rem 2rem;
+  }
+
+  .step-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--border);
+    line-height: 1;
+    margin-bottom: 1rem;
+  }
+
+  .step h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 700;
+    margin-bottom: .5rem;
+  }
+
+  .step p {
+    font-size: .8rem;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+
+  /* ── footer ── */
+  footer {
+    position: relative; z-index: 1;
+    text-align: center;
+    padding: 2rem;
+    border-top: 1px solid var(--border);
+    font-size: .75rem;
+    color: var(--muted);
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Sort<span>ify</span></div>
+  <div class="badge">Powered by Claude AI</div>
+</nav>
+
+<section class="hero">
+  <!-- floating decorative cards -->
+  <div class="float-cards">
+    <div class="float-card">🎵 <span>Blinding Lights</span> · The Weeknd</div>
+    <div class="float-card">🎸 <span>Bohemian Rhapsody</span> · Queen</div>
+    <div class="float-card">🌙 <span>Midnight Rain</span> · Taylor Swift</div>
+    <div class="float-card">🔥 <span>HUMBLE.</span> · Kendrick Lamar</div>
+    <div class="float-card">☕ <span>Banana Pancakes</span> · Jack Johnson</div>
+    <div class="float-card">🏃 <span>Stronger</span> · Kanye West</div>
+  </div>
+
+  <p class="hero-eyebrow">AI-powered Spotify curation</p>
+  <h1>Your liked songs,<br><em>finally</em> organized.</h1>
+  <p class="subtitle">
+    You've got hundreds of liked songs sitting in Spotify going unlistened.
+    Sortify uses AI to group them into playlists you'll actually use — then
+    you review and approve before anything changes.
+  </p>
+
+  <div class="cta-wrap">
+    <a href="/login" class="btn-spotify">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+      Connect with Spotify
+    </a>
+    <a href="#how" class="btn-ghost">How it works ↓</a>
+  </div>
+</section>
+
+<section class="section" id="how">
+  <p class="section-label">How it works</p>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">01</div>
+      <h3>Connect</h3>
+      <p>Log in securely with your Spotify account. We only read your library and create playlists — nothing else.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <h3>Analyze</h3>
+      <p>We fetch all your liked songs along with tempo, energy, mood, and danceability data for each track.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <h3>AI Sorts</h3>
+      <p>Claude AI groups your songs into evocative playlists — "Late Night Drive", "Sunday Morning", and more.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <h3>You Decide</h3>
+      <p>Review every playlist before it's created. Move songs, rename playlists, or skip ones you don't want.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">05</div>
+      <h3>Done</h3>
+      <p>Hit create and your new playlists appear in Spotify instantly. Your liked songs, finally usable.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  Sortify · Not affiliated with Spotify or Anthropic · Your data never stored
+</footer>
+
+</body>
+</html>

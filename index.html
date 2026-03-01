@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sortify — AI Playlist Curator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #090b10;
+    --surface:  #0f1318;
+    --card:     #151a22;
+    --border:   #1e2530;
+    --green:    #1db954;
+    --green2:   #1ed760;
+    --accent:   #ff6b35;
+    --muted:    #4a5568;
+    --text:     #e8edf5;
+    --subtext:  #8892a4;
+    --danger:   #e53e3e;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Grid bg ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(29,185,84,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(29,185,84,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; max-width: 960px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 20px 0;
+  }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; }
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 1.4rem;
+    letter-spacing: -0.03em;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 12px var(--green);
+    animation: pulse 2s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: .6; transform: scale(.85); }
+  }
+  .badge {
+    font-size: .6rem; letter-spacing: .12em; text-transform: uppercase;
+    background: rgba(29,185,84,.12); color: var(--green);
+    border: 1px solid rgba(29,185,84,.25);
+    padding: 3px 8px; border-radius: 99px;
+  }
+
+  /* ── Screens ── */
+  .screen { display: none; }
+  .screen.active { display: block; }
+
+  /* ── Hero ── */
+  #screen-login {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    min-height: calc(100vh - 73px);
+    text-align: center; gap: 32px;
+  }
+  #screen-login.active { display: flex; }
+
+  .hero-eyebrow {
+    font-size: .7rem; letter-spacing: .2em; text-transform: uppercase;
+    color: var(--green); opacity: .8;
+  }
+  .hero-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: clamp(2.4rem, 6vw, 4rem);
+    line-height: 1.05; letter-spacing: -.04em;
+    max-width: 640px;
+  }
+  .hero-title em { font-style: normal; color: var(--green); }
+  .hero-sub {
+    color: var(--subtext); font-size: .9rem; max-width: 440px; line-height: 1.7;
+  }
+  .hero-features {
+    display: flex; gap: 12px; flex-wrap: wrap; justify-content: center;
+  }
+  .feat-chip {
+    font-size: .7rem; letter-spacing: .06em;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 6px 14px; border-radius: 99px;
+    color: var(--subtext);
+  }
+  .feat-chip span { color: var(--green); margin-right: 4px; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: 'DM Mono', monospace; font-size: .85rem;
+    padding: 14px 28px; border-radius: 6px;
+    border: none; cursor: pointer;
+    transition: all .2s;
+    text-decoration: none;
+  }
+  .btn-green {
+    background: var(--green); color: #000; font-weight: 600;
+  }
+  .btn-green:hover { background: var(--green2); transform: translateY(-1px); box-shadow: 0 8px 24px rgba(29,185,84,.3); }
+  .btn-outline {
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--green); color: var(--green); }
+  .btn-danger {
+    background: rgba(229,62,62,.12); color: var(--danger);
+    border: 1px solid rgba(229,62,62,.25);
+    font-size: .75rem; padding: 6px 12px;
+  }
+  .btn-danger:hover { background: rgba(229,62,62,.2); }
+  .btn-sm { padding: 8px 16px; font-size: .75rem; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none !important; }
+
+  /* ── Loading screen ── */
+  #screen-loading { text-align: center; padding: 120px 0; }
+  .loading-icon {
+    width: 64px; height: 64px; margin: 0 auto 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-title {
+    font-family: 'Syne', sans-serif; font-size: 1.4rem; font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .loading-steps { color: var(--subtext); font-size: .8rem; line-height: 2; }
+  .loading-steps .step { opacity: .4; transition: opacity .4s; }
+  .loading-steps .step.active { opacity: 1; color: var(--green); }
+  .loading-steps .step.done { opacity: .7; }
+
+  /* ── Review screen ── */
+  #screen-review { padding: 48px 0; }
+  .review-header {
+    display: flex; align-items: flex-start;
+    justify-content: space-between; flex-wrap: wrap; gap: 20px;
+    margin-bottom: 40px;
+  }
+  .review-header h2 {
+    font-family: 'Syne', sans-serif; font-size: 1.8rem; font-weight: 800;
+    letter-spacing: -.03em;
+  }
+  .review-header h2 small {
+    display: block; font-family: 'DM Mono', monospace;
+    font-size: .75rem; font-weight: 400; color: var(--subtext); margin-top: 4px;
+  }
+  .review-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .playlist-grid { display: grid; gap: 16px; }
+
+  /* ── Playlist card ── */
+  .pl-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+    transition: border-color .2s;
+  }
+  .pl-card:hover { border-color: var(--muted); }
+  .pl-card.removed { opacity: .35; }
+
+  .pl-header {
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px 20px; cursor: pointer;
+  }
+  .pl-color {
+    width: 44px; height: 44px; border-radius: 8px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem;
+  }
+  .pl-info { flex: 1; min-width: 0; }
+  .pl-name-row { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .pl-name {
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem;
+    background: transparent; border: none; color: var(--text);
+    border-bottom: 1px dashed transparent;
+    cursor: text; width: 100%;
+    transition: border-color .2s;
+    font-family: 'Syne', sans-serif;
+  }
+  .pl-name:focus { outline: none; border-bottom-color: var(--green); color: var(--green); }
+  .pl-desc {
+    font-size: .75rem; color: var(--subtext);
+    background: transparent; border: none; width: 100%; color: var(--subtext);
+    cursor: text; font-family: 'DM Mono', monospace;
+  }
+  .pl-desc:focus { outline: none; color: var(--text); }
+  .pl-meta { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .pl-count {
+    font-size: .7rem; color: var(--subtext);
+    background: var(--surface); border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 99px;
+  }
+  .pl-toggle {
+    font-size: .7rem; color: var(--subtext);
+    background: none; border: none; cursor: pointer;
+    transition: color .2s;
+  }
+  .pl-toggle:hover { color: var(--text); }
+
+  /* Songs list */
+  .pl-songs { display: none; border-top: 1px solid var(--border); }
+  .pl-songs.open { display: block; }
+  .song-list { max-height: 320px; overflow-y: auto; }
+  .song-list::-webkit-scrollbar { width: 4px; }
+  .song-list::-webkit-scrollbar-track { background: transparent; }
+  .song-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .song-row {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 20px;
+    border-bottom: 1px solid rgba(255,255,255,.03);
+    transition: background .15s;
+  }
+  .song-row:hover { background: rgba(255,255,255,.03); }
+  .song-row:last-child { border-bottom: none; }
+  .song-img {
+    width: 36px; height: 36px; border-radius: 4px;
+    object-fit: cover; flex-shrink: 0;
+    background: var(--border);
+  }
+  .song-info { flex: 1; min-width: 0; }
+  .song-name {
+    font-size: .8rem; font-weight: 500; color: var(--text);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .song-artist { font-size: .7rem; color: var(--subtext); margin-top: 1px; }
+  .song-chips { display: flex; gap: 5px; flex-shrink: 0; }
+  .chip {
+    font-size: .6rem; padding: 2px 7px; border-radius: 4px;
+    border: 1px solid var(--border); color: var(--subtext);
+  }
+  .chip.energy  { border-color: rgba(255,107,53,.3); color: #ff9a70; }
+  .chip.valence { border-color: rgba(29,185,84,.3);  color: #4deb8a; }
+  .song-remove {
+    background: none; border: none; cursor: pointer;
+    color: var(--muted); font-size: .8rem;
+    padding: 4px; border-radius: 4px;
+    transition: color .15s;
+  }
+  .song-remove:hover { color: var(--danger); }
+
+  .pl-footer {
+    padding: 12px 20px; display: flex; justify-content: flex-end;
+    gap: 8px; border-top: 1px solid var(--border);
+  }
+
+  /* ── Done screen ── */
+  #screen-done { text-align: center; padding: 100px 0; }
+  .done-icon { font-size: 4rem; margin-bottom: 24px; }
+  .done-title {
+    font-family: 'Syne', sans-serif; font-size: 2rem; font-weight: 800;
+    margin-bottom: 12px;
+  }
+  .done-sub { color: var(--subtext); font-size: .9rem; margin-bottom: 36px; line-height: 1.7; }
+  .done-list { 
+    max-width: 420px; margin: 0 auto 36px; text-align: left;
+    border: 1px solid var(--border); border-radius: 10px;
+    overflow: hidden; background: var(--card);
+  }
+  .done-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 18px; border-bottom: 1px solid var(--border);
+    font-size: .8rem;
+  }
+  .done-item:last-child { border-bottom: none; }
+  .done-item .check { color: var(--green); }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--card); border: 1px solid var(--border);
+    padding: 12px 20px; border-radius: 8px; font-size: .8rem;
+    transition: transform .3s; z-index: 100;
+    white-space: nowrap;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+  #toast.err  { border-color: rgba(229,62,62,.4); color: var(--danger); }
+  #toast.ok   { border-color: rgba(29,185,84,.4); color: var(--green); }
+
+  /* ── Token input modal ── */
+  #modal-token {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,.7); backdrop-filter: blur(4px);
+    z-index: 50; align-items: center; justify-content: center;
+  }
+  #modal-token.open { display: flex; }
+  .modal-box {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 12px; padding: 32px; max-width: 440px; width: 100%;
+  }
+  .modal-box h3 { font-family: 'Syne', sans-serif; font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+  .modal-box p  { color: var(--subtext); font-size: .8rem; line-height: 1.7; margin-bottom: 20px; }
+  .modal-box input {
+    width: 100%; background: var(--surface); border: 1px solid var(--border);
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: .8rem;
+    padding: 12px 14px; border-radius: 6px;
+    margin-bottom: 16px;
+  }
+  .modal-box input:focus { outline: none; border-color: var(--green); }
+  .modal-footer { display: flex; gap: 10px; justify-content: flex-end; }
+
+  .unlike-toggle {
+    display: flex; align-items: center; gap: 8px;
+    cursor: pointer; user-select: none;
+    font-size: .75rem; color: var(--subtext);
+    border: 1px solid var(--border);
+    padding: 8px 14px; border-radius: 6px;
+    background: var(--surface);
+    transition: border-color .2s, color .2s;
+  }
+  .unlike-toggle:hover { border-color: var(--accent); color: var(--text); }
+  .unlike-toggle input[type=checkbox] { display: none; }
+  .unlike-toggle:has(input:checked) {
+    border-color: rgba(255,107,53,.4);
+    background: rgba(255,107,53,.06);
+    color: #ff9a70;
+  }
+  .unlike-icon { font-size: .9rem; }
+
+  /* ── Misc ── */
+  .sep { height: 1px; background: var(--border); margin: 8px 0; }
+  .text-green { color: var(--green); }
+  .mt-2 { margin-top: 8px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="logo">
+      <div class="logo-dot"></div>
+      Sortify
+    </div>
+    <span class="badge">AI Curator</span>
+  </div>
+</header>
+
+<!-- ════════════════════════════════════════ LOGIN ══ -->
+<div id="screen-login" class="screen active">
+  <div class="wrap">
+    <p class="hero-eyebrow">Spotify × Claude AI</p>
+    <h1 class="hero-title">Your liked songs,<br><em>finally organized.</em></h1>
+    <p class="hero-sub">Sortify analyzes your entire liked songs library and uses AI to suggest playlists you'll actually listen to — then lets you review, rename, and approve everything before it touches your Spotify.</p>
+    <div class="hero-features">
+      <div class="feat-chip"><span>✦</span>Audio feature analysis</div>
+      <div class="feat-chip"><span>✦</span>AI playlist suggestions</div>
+      <div class="feat-chip"><span>✦</span>Review before creating</div>
+      <div class="feat-chip"><span>✦</span>No songs deleted</div>
+    </div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;">
+      <a href="/login" class="btn btn-green">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg>
+        Connect Spotify
+      </a>
+      <button class="btn btn-outline" onclick="openTokenModal()">
+        Paste token manually
+      </button>
+    </div>
+    <p style="font-size:.7rem;color:var(--subtext);max-width:380px;text-align:center;line-height:1.6;">
+      Sortify only reads your library and creates new playlists.<br>It will never delete, modify, or share your data.
+    </p>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ LOADING ══ -->
+<div id="screen-loading" class="screen">
+  <div class="wrap">
+    <div class="loading-icon"></div>
+    <div class="loading-title">Analyzing your library…</div>
+    <div class="loading-steps">
+      <div class="step" id="step-1">① Fetching liked songs</div>
+      <div class="step" id="step-2">② Getting audio features (tempo, energy, mood)</div>
+      <div class="step" id="step-3">③ Sending to Claude AI for playlist suggestions</div>
+      <div class="step" id="step-4">④ Building your review dashboard</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ REVIEW ══ -->
+<div id="screen-review" class="screen">
+  <div class="wrap">
+    <div class="review-header">
+      <h2>
+        Review your playlists
+        <small id="review-meta"></small>
+      </h2>
+      <div class="review-actions">
+        <button class="btn btn-outline btn-sm" onclick="expandAll()">Expand all</button>
+        <label class="unlike-toggle" title="Songs removed from playlists during review won't be unliked">
+          <input type="checkbox" id="chk-unlike" checked>
+          <span class="unlike-label">
+            <span class="unlike-icon">🗑</span>
+            Remove from Liked Songs after sorting
+          </span>
+        </label>
+        <button class="btn btn-green" id="btn-create" onclick="createPlaylists()">
+          ✦ Create in Spotify
+        </button>
+      </div>
+    </div>
+    <div class="playlist-grid" id="playlist-grid"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ DONE ══ -->
+<div id="screen-done" class="screen">
+  <div class="wrap">
+    <div class="done-icon">🎉</div>
+    <div class="done-title">Playlists created!</div>
+    <div class="done-sub">
+      Your new playlists are live in Spotify.<br>
+      Open the app and start listening.
+    </div>
+    <div class="done-list" id="done-list"></div>
+    <button class="btn btn-green" onclick="location.reload()">Sort another library</button>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════ MODAL ══ -->
+<div id="modal-token">
+  <div class="modal-box">
+    <h3>Paste Spotify Token</h3>
+    <p>Get a token from the <a href="https://developer.spotify.com/console/get-current-user-saved-tracks/" target="_blank" style="color:var(--green)">Spotify Web Console</a>, paste it below, and hit Analyze.</p>
+    <input type="text" id="token-input" placeholder="BQC...your access token...">
+    <div class="modal-footer">
+      <button class="btn btn-outline btn-sm" onclick="closeTokenModal()">Cancel</button>
+      <button class="btn btn-green btn-sm" onclick="submitToken()">Analyze →</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let STATE = {
+  token: null,
+  playlists: [],   // { name, description, songs[] }
+  total: 0,
+};
+
+const PALETTE = [
+  { bg: '#1a2a1a', emoji: '🌿' },
+  { bg: '#1a1a2a', emoji: '🌙' },
+  { bg: '#2a1a1a', emoji: '🔥' },
+  { bg: '#1a2a2a', emoji: '🌊' },
+  { bg: '#2a2a1a', emoji: '⚡' },
+  { bg: '#2a1a2a', emoji: '💜' },
+  { bg: '#1a1f2a', emoji: '🎸' },
+  { bg: '#2a1f1a', emoji: '☀️' },
+  { bg: '#1f2a1a', emoji: '🌲' },
+  { bg: '#2a1a1f', emoji: '🎹' },
+  { bg: '#1f1a2a', emoji: '🎺' },
+  { bg: '#2a2a2a', emoji: '🎙️' },
+];
+
+// ── Screen management ──────────────────────────────────────────────────────
+function show(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+// ── URL token detection ────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  if (params.get('logged_in') && params.get('token')) {
+    STATE.token = params.get('token');
+    history.replaceState({}, '', '/');
+    startAnalysis();
+  }
+});
+
+// ── Token modal ────────────────────────────────────────────────────────────
+function openTokenModal()  { document.getElementById('modal-token').classList.add('open'); }
+function closeTokenModal() { document.getElementById('modal-token').classList.remove('open'); }
+function submitToken() {
+  const t = document.getElementById('token-input').value.trim();
+  if (!t) return toast('Paste a token first', 'err');
+  STATE.token = t;
+  closeTokenModal();
+  startAnalysis();
+}
+
+// ── Analysis ───────────────────────────────────────────────────────────────
+async function startAnalysis() {
+  show('loading');
+  const steps = ['step-1','step-2','step-3','step-4'];
+
+  function activateStep(i) {
+    if (i > 0) {
+      document.getElementById(steps[i-1]).classList.remove('active');
+      document.getElementById(steps[i-1]).classList.add('done');
+    }
+    if (i < steps.length) document.getElementById(steps[i]).classList.add('active');
+  }
+
+  activateStep(0);
+  // Simulate step progression while fetch runs
+  setTimeout(() => activateStep(1), 3000);
+  setTimeout(() => activateStep(2), 7000);
+  setTimeout(() => activateStep(3), 14000);
+
+  try {
+    const res  = await fetch(`/api/analyze?token=${STATE.token}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    STATE.playlists = data.playlists;
+    STATE.total     = data.total;
+    renderReview();
+    show('review');
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+    show('login');
+  }
+}
+
+// ── Review rendering ───────────────────────────────────────────────────────
+function renderReview() {
+  document.getElementById('review-meta').textContent =
+    `${STATE.playlists.length} playlists suggested from ${STATE.total} liked songs`;
+
+  const grid = document.getElementById('playlist-grid');
+  grid.innerHTML = '';
+
+  STATE.playlists.forEach((pl, pi) => {
+    const pal  = PALETTE[pi % PALETTE.length];
+    const card = document.createElement('div');
+    card.className = 'pl-card';
+    card.dataset.pi = pi;
+
+    card.innerHTML = `
+      <div class="pl-header" onclick="toggleSongs(${pi})">
+        <div class="pl-color" style="background:${pal.bg}">${pal.emoji}</div>
+        <div class="pl-info">
+          <div class="pl-name-row">
+            <input class="pl-name" value="${esc(pl.name)}"
+              onclick="event.stopPropagation()"
+              oninput="STATE.playlists[${pi}].name=this.value">
+          </div>
+          <input class="pl-desc" value="${esc(pl.description)}"
+            onclick="event.stopPropagation()"
+            oninput="STATE.playlists[${pi}].description=this.value">
+        </div>
+        <div class="pl-meta">
+          <span class="pl-count">${pl.songs.length} songs</span>
+          <button class="pl-toggle" onclick="event.stopPropagation();removePl(${pi})">✕ Remove</button>
+          <span class="pl-toggle" id="toggle-${pi}">▼</span>
+        </div>
+      </div>
+      <div class="pl-songs" id="songs-${pi}">
+        <div class="song-list" id="song-list-${pi}">
+          ${pl.songs.map((s, si) => renderSong(s, pi, si)).join('')}
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function renderSong(s, pi, si) {
+  const energy  = s.energy  !== undefined ? Math.round(s.energy  * 100) : null;
+  const valence = s.valence !== undefined ? Math.round(s.valence * 100) : null;
+  return `
+    <div class="song-row" id="song-${pi}-${si}">
+      ${s.image ? `<img class="song-img" src="${s.image}" loading="lazy">` : '<div class="song-img"></div>'}
+      <div class="song-info">
+        <div class="song-name">${esc(s.name)}</div>
+        <div class="song-artist">${esc(s.artist)}</div>
+      </div>
+      <div class="song-chips">
+        ${energy  !== null ? `<span class="chip energy">⚡${energy}%</span>` : ''}
+        ${valence !== null ? `<span class="chip valence">☀${valence}%</span>` : ''}
+        ${s.tempo ? `<span class="chip">${s.tempo}bpm</span>` : ''}
+      </div>
+      <button class="song-remove" title="Remove from playlist"
+        onclick="removeSong(${pi},${si})">✕</button>
+    </div>
+  `;
+}
+
+function toggleSongs(pi) {
+  const el   = document.getElementById('songs-' + pi);
+  const icon = document.getElementById('toggle-' + pi);
+  el.classList.toggle('open');
+  icon.textContent = el.classList.contains('open') ? '▲' : '▼';
+}
+
+function expandAll() {
+  STATE.playlists.forEach((_, pi) => {
+    document.getElementById('songs-' + pi).classList.add('open');
+    document.getElementById('toggle-' + pi).textContent = '▲';
+  });
+}
+
+function removePl(pi) {
+  if (!confirm(`Remove playlist "${STATE.playlists[pi].name}"? Songs stay in your Liked Songs.`)) return;
+  STATE.playlists.splice(pi, 1);
+  renderReview();
+}
+
+function removeSong(pi, si) {
+  STATE.playlists[pi].songs.splice(si, 1);
+  const list = document.getElementById('song-list-' + pi);
+  list.innerHTML = STATE.playlists[pi].songs.map((s, i) => renderSong(s, pi, i)).join('');
+  // Update count badge
+  const card  = document.querySelector(`[data-pi="${pi}"]`);
+  if (card) card.querySelector('.pl-count').textContent = STATE.playlists[pi].songs.length + ' songs';
+}
+
+// ── Create playlists ───────────────────────────────────────────────────────
+async function createPlaylists() {
+  const btn    = document.getElementById('btn-create');
+  const unlike = document.getElementById('chk-unlike').checked;
+
+  // Count total songs being sorted
+  const totalSongs = STATE.playlists.reduce((sum, pl) => sum + pl.songs.length, 0);
+
+  const confirmMsg = unlike
+    ? `Create ${STATE.playlists.length} playlists and remove ${totalSongs} songs from your Liked Songs?\n\nThis cannot be undone.`
+    : `Create ${STATE.playlists.length} playlists? Songs will stay in your Liked Songs.`;
+
+  if (!confirm(confirmMsg)) return;
+
+  btn.disabled = true;
+  btn.textContent = unlike ? 'Creating & cleaning up…' : 'Creating…';
+
+  try {
+    const res  = await fetch('/api/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: STATE.token, playlists: STATE.playlists, unlike }),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    const list = document.getElementById('done-list');
+    list.innerHTML = data.created.map(p => `
+      <div class="done-item">
+        <span class="check">✓</span>
+        <span>${esc(p.name)}</span>
+        <span style="margin-left:auto;color:var(--subtext);font-size:.7rem">${p.count} songs</span>
+      </div>
+    `).join('');
+
+    // Update done subtitle
+    const sub = document.querySelector('.done-sub');
+    if (unlike && data.unliked > 0) {
+      sub.innerHTML = `Your new playlists are live in Spotify.<br>
+        <span style="color:var(--accent)">✓ ${data.unliked} songs removed from Liked Songs.</span><br>
+        Open the app and start listening.`;
+    } else {
+      sub.innerHTML = `Your new playlists are live in Spotify.<br>Your Liked Songs were left untouched.<br>Open the app and start listening.`;
+    }
+
+    show('done');
+  } catch(e) {
+    toast('Error: ' + e.message, 'err');
+    btn.disabled = false;
+    btn.textContent = '✦ Create in Spotify';
+  }
+}
+
+// ── Utils ──────────────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let toastTimer;
+function toast(msg, type = 'ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = '', 3200);
+}
+</script>
+</body>
+</html>
