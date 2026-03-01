@@ -18,8 +18,9 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 SPOTIFY_CLIENT_ID     = os.environ.get("SPOTIFY_CLIENT_ID", "YOUR_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET", "YOUR_CLIENT_SECRET")
 ANTHROPIC_API_KEY     = os.environ.get("ANTHROPIC_API_KEY", "YOUR_ANTHROPIC_KEY")
-REDIRECT_URI          = "http://127.0.0.1:8888/callback"
-PORT                  = 8888
+PORT                  = int(os.environ.get("PORT", 8888))
+RENDER_URL            = os.environ.get("RENDER_EXTERNAL_URL", "")
+REDIRECT_URI          = f"{RENDER_URL}/callback" if RENDER_URL else f"http://127.0.0.1:{PORT}/callback"
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCOPES = "user-library-read user-library-modify playlist-modify-public playlist-modify-private"
@@ -361,10 +362,12 @@ def main():
         print("\nSee README.md for setup instructions.")
         print("─" * 40)
 
-    server = HTTPServer(("localhost", PORT), Handler)
-    print(f"🚀 Server running at http://localhost:{PORT}")
+    server = HTTPServer(("0.0.0.0", PORT), Handler)
+    base_url = RENDER_URL or f"http://127.0.0.1:{PORT}"
+    print(f"🚀 Server running at {base_url}")
     print("   Opening browser...\n")
-    threading.Timer(1, lambda: webbrowser.open(f"http://localhost:{PORT}")).start()
+    if not RENDER_URL:
+        threading.Timer(1, lambda: webbrowser.open(base_url)).start()
     try:
         server.serve_forever()
     except KeyboardInterrupt:
