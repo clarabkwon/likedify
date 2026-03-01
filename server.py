@@ -20,10 +20,14 @@ SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET", "YOUR_CLIENT_SEC
 ANTHROPIC_API_KEY     = os.environ.get("ANTHROPIC_API_KEY", "YOUR_ANTHROPIC_KEY")
 PORT                  = int(os.environ.get("PORT", 8888))
 RENDER_URL            = os.environ.get("RENDER_EXTERNAL_URL", "")
-REDIRECT_URI          = f"{RENDER_URL}/callback" if RENDER_URL else f"http://127.0.0.1:{PORT}/callback"
+BASE_URL              = RENDER_URL.rstrip("/") if RENDER_URL else f"http://127.0.0.1:{PORT}"
+REDIRECT_URI          = f"{BASE_URL}/callback"
 # ─────────────────────────────────────────────────────────────────────────────
 
 SCOPES = "user-library-read user-library-modify playlist-modify-public playlist-modify-private"
+
+# Debug
+print(f"🔗 REDIRECT_URI = {REDIRECT_URI}")
 
 # Simple in-memory token store
 token_store = {}
